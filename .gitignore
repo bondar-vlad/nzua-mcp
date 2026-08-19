@@ -1,0 +1,18 @@
+.env
+*.log
+.nzua-*
+analytics/
+api-captures/
+tmp-*.html
+
+# .NET
+bin/
+obj/
+TestResults/
+coverage/
+*.user
+*.suo
+.vs/
+
+# Playwright and local sessions
+playwright-profile/

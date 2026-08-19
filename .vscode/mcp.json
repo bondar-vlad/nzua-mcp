@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "nzua": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["run", "--project", "${workspaceFolder}/NzuaMcp.csproj"],
+      "env": {
+        "NZUA_ALLOW_WRITES": "false",
+        "NZUA_PRIVACY_MODE": "redact",
+        "NZUA_HEADLESS": "false"
+      }
+    }
+  }
+}
