@@ -6,8 +6,8 @@
       "args": ["run", "--project", "${workspaceFolder}/NzuaMcp.csproj"],
       "env": {
         "NZUA_ALLOW_WRITES": "false",
-        "NZUA_PRIVACY_MODE": "redact",
-        "NZUA_HEADLESS": "false"
+        "NZUA_SHOW_REAL_NAMES": "false",
+        "NZUA_HEADLESS": "true"
       }
     }
   }

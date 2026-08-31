@@ -7,20 +7,25 @@
     <Nullable>enable</Nullable>
     <AssemblyName>nzua-mcp</AssemblyName>
     <RootNamespace>NzuaMcp</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Vlad Bondar and contributors</Authors>
     <Description>Unofficial privacy-conscious MCP server for teacher workflows in NZ.UA.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/vladbondar/nzua-mcp</RepositoryUrl>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NzuaMcp.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.6.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="Microsoft.Playwright" Version="1.61.0" />
-    <PackageReference Include="ModelContextProtocol" Version="2.0.0" />
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>

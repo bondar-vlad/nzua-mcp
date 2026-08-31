@@ -367,18 +367,18 @@
       },
       "ModelContextProtocol": {
         "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "X/KDNZDP9Zgs7YXXxxpKiDMWWPXYrs764lVgc6vEM4pCg87bYz4VaceeiKW91XDTGgUvIbmRYXgWqyNpV32xRg==",
+        "resolved": "2.2.0",
+        "contentHash": "4Pb9u02Nwsp0poueDsqNdyGRojFxOYpljB7zDBsq+aHL+Afou3OgxlBc3GWFVnsRMRJrUtWqDh3s6k2JgPzmrQ==",
         "dependencies": {
           "Microsoft.Extensions.Caching.Abstractions": "10.0.10",
           "Microsoft.Extensions.Hosting.Abstractions": "10.0.10",
-          "ModelContextProtocol.Core": "[2.0.0]"
+          "ModelContextProtocol.Core": "[2.2.0]"
         }
       },
       "ModelContextProtocol.Core": {
         "type": "Transitive",
-        "resolved": "2.0.0",
-        "contentHash": "piFR0HtA/2Oc1tgk96EE5Tye6qA2sg3WGRAXBhUqo/BWikdEYEs2UuqtmwLrQZJUge1nUOPgGHYsb15VIBK8iw==",
+        "resolved": "2.2.0",
+        "contentHash": "FeBfXU6T8k+jw4afg4sfxdEX2rL/e5oKOk9ROOGztu9k47+7Bz08sdaToYt2XvMY1opNbwxYQOFMj6wH9TInhA==",
         "dependencies": {
           "Microsoft.Extensions.AI.Abstractions": "10.8.3",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.10"
@@ -445,7 +445,7 @@
           "AngleSharp": "[1.6.0, )",
           "Microsoft.Extensions.Hosting": "[10.0.10, )",
           "Microsoft.Playwright": "[1.61.0, )",
-          "ModelContextProtocol": "[2.0.0, )"
+          "ModelContextProtocol": "[2.2.0, )"
         }
       }
     }

@@ -287,7 +287,9 @@ public class NzuaClient
     /// При виявленні неавторизованої відповіді запускає ручний вхід і повторює лише невдалі запити,
     /// зберігаючи вже успішні відповіді.
     /// </summary>
-    public async Task<List<(string Body, int Status)>> BatchPost(List<(string Path, Dictionary<string, string> Body)> requests)
+    public async Task<List<(string Body, int Status)>> BatchPost(
+        List<(string Path, Dictionary<string, string> Body)> requests,
+        Action<int, int>? onProgress = null)
     {
         foreach (var request in requests)
             NzuaWritePolicy.EnsureAllowed(request.Path);
@@ -299,7 +301,7 @@ public class NzuaClient
         (List<(string Body, int Status)> Responses, NzuaSession Session) result;
         try
         {
-            result = await NzuaAuth.BatchPostWithBrowser(RequireSession(), requests, headless);
+            result = await NzuaAuth.BatchPostWithBrowser(RequireSession(), requests, headless, onProgress);
         }
         catch (Exception ex) when (IsBrowserUnavailable(ex))
         {
@@ -360,12 +362,13 @@ public class NzuaClient
     /// <summary>
     /// Отримує кілька GET-сторінок. Спочатку через HttpClient; ті що заблоковані CF — через один браузерний сеанс.
     /// </summary>
-    public async Task<List<string>> BatchGet(List<string> paths)
+    public async Task<List<string>> BatchGet(List<string> paths, Action<int, int>? onProgress = null)
     {
         await EnsureSession();
 
         var results = new string?[paths.Count];
         var needBrowser = new List<int>();
+        var completed = 0;
 
         for (int i = 0; i < paths.Count; i++)
         {
@@ -389,6 +392,7 @@ public class NzuaClient
                     continue;
                 }
                 results[i] = body;
+                onProgress?.Invoke(++completed, paths.Count);
             }
             catch (CloudflareException)
             {
@@ -401,16 +405,20 @@ public class NzuaClient
             Console.Error.WriteLine($"[nzua] BatchGet: {needBrowser.Count}/{paths.Count} сторінок через браузер");
             var headless = Environment.GetEnvironmentVariable("NZUA_HEADLESS") != "false";
             var browserPaths = needBrowser.Select(idx => paths[idx]).ToList();
+            var alreadyCompleted = completed;
+            Action<int, int>? browserProgress = onProgress is null
+                ? null
+                : (done, _) => onProgress(alreadyCompleted + done, paths.Count);
             (List<string> HtmlPages, NzuaSession Session) browserResult;
             try
             {
-                browserResult = await NzuaAuth.BatchFetchWithBrowser(RequireSession(), browserPaths, headless);
+                browserResult = await NzuaAuth.BatchFetchWithBrowser(RequireSession(), browserPaths, headless, browserProgress);
             }
             catch (Exception ex) when (IsBrowserUnavailable(ex))
             {
                 // Читання без побічних ефектів — безпечно відновити сесію й повторити один раз.
                 await RenewSession(new AuthException("Вікно браузера було закрито. Потрібен новий ручний вхід."));
-                browserResult = await NzuaAuth.BatchFetchWithBrowser(RequireSession(), browserPaths, headless);
+                browserResult = await NzuaAuth.BatchFetchWithBrowser(RequireSession(), browserPaths, headless, browserProgress);
             }
             SetSession(browserResult.Session);
             for (int j = 0; j < needBrowser.Count; j++)

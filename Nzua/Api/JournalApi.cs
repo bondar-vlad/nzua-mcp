@@ -43,7 +43,7 @@ public class JournalApi(NzuaClient client)
         return await NzuaParser.ParseJournalPage(html);
     }
 
-    public async Task<JournalPage> GetAll(string journalId)
+    public async Task<JournalPage> GetAll(string journalId, Action<int, int>? onPageLoaded = null)
     {
         lock (_cacheLock)
         {
@@ -55,6 +55,7 @@ public class JournalApi(NzuaClient client)
 
         var firstPage = await GetPage(journalId, 1);
         var totalPages = firstPage.Pagination.TotalPages;
+        onPageLoaded?.Invoke(1, Math.Max(totalPages, 1));
 
         JournalPage result;
         if (totalPages <= 1)
@@ -71,7 +72,10 @@ public class JournalApi(NzuaClient client)
                 .Select(p => $"/journal/index?journal={journalId}&page={p}")
                 .ToList();
 
-            var htmls = await client.BatchGet(paths);
+            Action<int, int>? pageProgress = onPageLoaded is null
+                ? null
+                : (done, _) => onPageLoaded(done + 1, totalPages);
+            var htmls = await client.BatchGet(paths, pageProgress);
             foreach (var html in htmls)
             {
                 var page = await NzuaParser.ParseJournalPage(html);

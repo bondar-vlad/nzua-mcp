@@ -9,6 +9,8 @@ public sealed class NzuaSessionStore
         WriteIndented = true,
     };
 
+    private static readonly TimeSpan StoreLockTimeout = TimeSpan.FromSeconds(10);
+
     public NzuaSessionStore(string? filePath = null)
     {
         FilePath = filePath ?? Path.Combine(
@@ -18,7 +20,24 @@ public sealed class NzuaSessionStore
 
     public string FilePath { get; }
 
+    /// <summary>Lock-файл single-flight ручного входу: лише один процес відкриває вікно логіну.</summary>
+    public string LoginLockFilePath => FilePath + ".login.lock";
+
+    private CrossProcessLock? AcquireStoreLock()
+    {
+        var storeLock = CrossProcessLock.TryAcquire(FilePath + ".lock", StoreLockTimeout);
+        if (storeLock is null)
+            Console.Error.WriteLine("[nzua-mcp] Не вдалося отримати лок файлу сесії за 10с — продовжуємо без нього.");
+        return storeLock;
+    }
+
     public NzuaSession? Load()
+    {
+        using var storeLock = AcquireStoreLock();
+        return LoadUnsafe();
+    }
+
+    private NzuaSession? LoadUnsafe()
     {
         try
         {
@@ -29,7 +48,7 @@ public sealed class NzuaSessionStore
             if (session?.ExpiresAt is not null &&
                 session.ExpiresAt < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
             {
-                Clear();
+                ClearUnsafe();
                 return null;
             }
 
@@ -44,13 +63,15 @@ public sealed class NzuaSessionStore
 
     public void Save(NzuaSession session)
     {
+        using var storeLock = AcquireStoreLock();
         try
         {
             var directory = Path.GetDirectoryName(FilePath);
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            var temporaryFile = FilePath + ".tmp";
+            // Унікальний tmp на процес: два процеси не перетирають один одному проміжний файл.
+            var temporaryFile = $"{FilePath}.{Environment.ProcessId}.tmp";
             File.WriteAllText(temporaryFile, JsonSerializer.Serialize(session, JsonOptions));
             File.Move(temporaryFile, FilePath, overwrite: true);
         }
@@ -61,6 +82,12 @@ public sealed class NzuaSessionStore
     }
 
     public void Clear()
+    {
+        using var storeLock = AcquireStoreLock();
+        ClearUnsafe();
+    }
+
+    private void ClearUnsafe()
     {
         try
         {

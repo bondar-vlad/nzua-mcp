@@ -26,7 +26,8 @@ public class HomeTasksApi(NzuaClient client)
 
     public async Task<List<BulkResult>> BatchSetHomework(
         string journalId,
-        List<SetHomeworkEntry> entries)
+        List<SetHomeworkEntry> entries,
+        Action<int, int>? onProgress = null)
     {
         var requests = entries.Select(entry =>
         {
@@ -50,7 +51,7 @@ public class HomeTasksApi(NzuaClient client)
         List<(string Body, int Status)> responses;
         try
         {
-            responses = await client.BatchPost(requests);
+            responses = await client.BatchPost(requests, onProgress);
         }
         catch (Exception ex)
         {

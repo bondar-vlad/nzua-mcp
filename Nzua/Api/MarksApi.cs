@@ -44,7 +44,7 @@ public class MarksApi(NzuaClient client)
         return await BulkSetMarksFlat(flat);
     }
 
-    public async Task<List<BulkResult>> BulkSetMarksFlat(List<FlatMarkEntry> entries)
+    public async Task<List<BulkResult>> BulkSetMarksFlat(List<FlatMarkEntry> entries, Action<int, int>? onProgress = null)
     {
         var requests = entries.Select(entry =>
         {
@@ -62,7 +62,7 @@ public class MarksApi(NzuaClient client)
         List<(string Body, int Status)> responses;
         try
         {
-            responses = await client.BatchPost(requests);
+            responses = await client.BatchPost(requests, onProgress);
         }
         catch (Exception ex)
         {

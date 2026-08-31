@@ -64,14 +64,84 @@ public class McpSurfaceTests
     }
 
     [Fact]
-    public void NoPromptsAreExposed()
+    public void PromptsAreExposedWithUniqueNamesAndDescriptions()
     {
         var methods = typeof(NzuaClient).Assembly
             .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            .Select(method => (Method: method, Prompt: method.GetCustomAttribute<McpServerPromptAttribute>()))
+            .Where(item => item.Prompt is not null)
+            .ToList();
+        var names = methods.Select(item => item.Prompt!.Name ?? item.Method.Name).ToList();
+
+        string[] expected =
+        [
+            "journal_audit",
+            "semester_prep",
+            "marks_compliance",
+            "attendance_review",
+            "lesson_plan_hygiene",
+        ];
+        Assert.Equal(expected.Order(), names.Order());
+        Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(methods, item =>
+            Assert.False(string.IsNullOrWhiteSpace(item.Method.GetCustomAttribute<DescriptionAttribute>()?.Description)));
+    }
+
+    [Fact]
+    public void PromptsAlwaysCarryTeacherDecisionSafeguard()
+    {
+        // Правило репозиторію: жодних автоматичних підсумкових оцінок — рішення за вчителем.
+        var prompts = typeof(NzuaClient).Assembly
+            .GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(method => method.GetCustomAttribute<McpServerPromptAttribute>() is not null)
+            .Where(method => method.GetCustomAttribute<McpServerPromptAttribute>() is not null);
+
+        foreach (var prompt in prompts)
+        {
+            // Єдиний обов'язковий параметр промптів — journalId; решта мають default-значення.
+            var arguments = prompt.GetParameters()
+                .Select(p => p.HasDefaultValue ? p.DefaultValue : "journal-1")
+                .ToArray();
+            var text = (string)prompt.Invoke(null, arguments)!;
+            Assert.Contains("рішення ухвалює вчитель", text);
+        }
+    }
+
+    [Fact]
+    public void ResourcesAreExposedWithExpectedUris()
+    {
+        var methods = typeof(NzuaClient).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            .Select(method => (Method: method, Resource: method.GetCustomAttribute<McpServerResourceAttribute>()))
+            .Where(item => item.Resource is not null)
+            .ToList();
+        var uris = methods.Select(item => item.Resource!.UriTemplate).ToList();
+
+        string[] expected =
+        [
+            "nzua://journals",
+            "nzua://journal/{journalId}",
+            "nzua://reference/special-marks",
+            "nzua://reference/otsinyuvannya",
+        ];
+        Assert.Equal(expected.Order(), uris.Order());
+        Assert.All(methods, item =>
+            Assert.False(string.IsNullOrWhiteSpace(item.Method.GetCustomAttribute<DescriptionAttribute>()?.Description)));
+    }
+
+    [Fact]
+    public void StudentListResourceIsNotExposed()
+    {
+        // Приватність: окремого ресурсу зі списком учнів бути не повинно.
+        var uris = typeof(NzuaClient).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            .Select(method => method.GetCustomAttribute<McpServerResourceAttribute>()?.UriTemplate)
+            .Where(uri => uri is not null)
             .ToList();
 
-        Assert.Empty(methods);
+        Assert.DoesNotContain(uris, uri => uri!.Contains("student", StringComparison.OrdinalIgnoreCase));
     }
 }

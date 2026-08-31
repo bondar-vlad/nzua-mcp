@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using NzuaMcp.Nzua;
 using NzuaMcp.Nzua.Api;
@@ -144,6 +145,7 @@ public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionS
         "Цим же інструментом перевіряйте результат після будь-якого запису.")]
     public async Task<string> GetJournal(
         [Description("ID журналу")] string journalId,
+        IProgress<ProgressNotificationValue> progress,
         [Description("Що включити у відповідь (через кому): students, lessons, marks, homework. За замовчуванням — все.")] string include = "students,lessons,marks,homework",
         [Description("Номер сторінки (1-based). Якщо не вказано — всі сторінки.")] int? page = null,
         [Description("Залишити лише ці уроки — schedule_id через кому. Фільтр у пам'яті, без додаткових запитів.")] string? scheduleIds = null,
@@ -168,7 +170,7 @@ public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionS
             else if (page.HasValue || onlyStudents)
                 data = await journalApi.GetPage(journalId, page ?? 1);
             else
-                data = await journalApi.GetAll(journalId);
+                data = await journalApi.GetAll(journalId, MarkTools.AsCallback(progress));
 
             data = JournalFilter.Apply(data, scheduleIds, studentIds);
 

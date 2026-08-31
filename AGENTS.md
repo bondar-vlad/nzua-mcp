@@ -10,19 +10,22 @@ This repository contains a .NET 10 local MCP server for interacting with NZ.UA. 
 
 ## Core project shape
 
-- `Program.cs`: server startup and MCP registration.
+- `Program.cs`: server startup, MCP registration (tools + prompts + resources), cross-process login single-flight.
 - `Mcp/Tools/`: tool surface for session, journals, forms, marks, lessons, and homework.
-- `Nzua/`: browser/auth/session logic, data models, parser, and API wrappers.
+- `Mcp/Prompts/`: parameterized teacher workflow prompts grounded in MON order #1427 (17.08.2026).
+- `Mcp/Resources/`: journal resources and static reference resources (special marks, grading rules).
+- `Nzua/`: browser/auth/session logic, cross-process lock, data models, parser, and API wrappers.
 - `tests/NzuaMcp.Tests/`: synthetic fixtures and regression tests for parsing, privacy, storage, and MCP behavior.
 
 ## Must-follow conventions
 
-- Keep default privacy enabled: redact student names by default unless the work explicitly requires full data in a trusted environment.
+- Keep default privacy enabled: student/teacher names are replaced with stable salted pseudonyms unless `NZUA_SHOW_REAL_NAMES=true` is explicitly set in a trusted environment.
 - Respect the read-before-write and verify-after-write pattern for all journal mutations.
 - Prefer batch operations via `entriesJson` instead of one tool call per row or item when possible.
 - Do not add automatic final-grade recommendations or local guesses for live NZ.UA IDs that must come from the current form.
 - Prefer live form values over hard-coded IDs for HUS/NUS/GR scenarios.
 - Keep write tools disabled unless `NZUA_ALLOW_WRITES=true` is explicitly set.
+- Multiple server processes are a supported scenario: session file is shared under a cross-process lock, manual login is single-flight, browser profiles are per-process. Do not reintroduce shared mutable state without locking.
 
 ## Build and test commands
 

@@ -52,7 +52,7 @@ public class LessonsApi(NzuaClient client)
         }
     }
 
-    public async Task<List<BulkResult>> BatchAddLessons(List<AddLessonParams> lessons)
+    public async Task<List<BulkResult>> BatchAddLessons(List<AddLessonParams> lessons, Action<int, int>? onProgress = null)
     {
         var requests = lessons.Select(p =>
         {
@@ -73,7 +73,7 @@ public class LessonsApi(NzuaClient client)
         List<(string Body, int Status)> responses;
         try
         {
-            responses = await client.BatchPost(requests);
+            responses = await client.BatchPost(requests, onProgress);
         }
         catch (Exception ex)
         {
@@ -89,7 +89,7 @@ public class LessonsApi(NzuaClient client)
         }).ToList();
     }
 
-    public async Task<List<BulkResult>> BatchEditLessons(List<EditLessonParams> lessons)
+    public async Task<List<BulkResult>> BatchEditLessons(List<EditLessonParams> lessons, Action<int, int>? onProgress = null)
     {
         var requests = lessons.Select(p =>
         {
@@ -110,7 +110,7 @@ public class LessonsApi(NzuaClient client)
         List<(string Body, int Status)> responses;
         try
         {
-            responses = await client.BatchPost(requests);
+            responses = await client.BatchPost(requests, onProgress);
         }
         catch (Exception ex)
         {
@@ -126,7 +126,7 @@ public class LessonsApi(NzuaClient client)
         }).ToList();
     }
 
-    public async Task<List<BulkResult>> BatchDeleteLessons(List<string> scheduleIds)
+    public async Task<List<BulkResult>> BatchDeleteLessons(List<string> scheduleIds, Action<int, int>? onProgress = null)
     {
         var requests = scheduleIds.Select(sid =>
             (Path: "/journal/delete-lesson", Body: new Dictionary<string, string> { ["schedule_id"] = sid })
@@ -135,7 +135,7 @@ public class LessonsApi(NzuaClient client)
         List<(string Body, int Status)> responses;
         try
         {
-            responses = await client.BatchPost(requests);
+            responses = await client.BatchPost(requests, onProgress);
         }
         catch (Exception ex)
         {

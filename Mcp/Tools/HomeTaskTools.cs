@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using NzuaMcp.Nzua;
 using NzuaMcp.Nzua.Api;
@@ -16,6 +17,7 @@ public class HomeTaskTools(HomeTasksApi homeTasksApi)
         "💡 Після змін перевірте через nzua_get_journal.")]
     public async Task<string> SetHomework(
         [Description("ID журналу")] string journalId,
+        IProgress<ProgressNotificationValue> progress,
         [Description("ID уроку (для одного)")] string? scheduleId = null,
         [Description("Тема уроку")] string? lessonTopic = null,
         [Description("Номер уроку в календарному плані")] string? lessonNumber = null,
@@ -34,7 +36,7 @@ public class HomeTaskTools(HomeTasksApi homeTasksApi)
                     new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? throw new NzuaException("Невірний формат entriesJson");
 
-                var results = await homeTasksApi.BatchSetHomework(journalId, entries);
+                var results = await homeTasksApi.BatchSetHomework(journalId, entries, MarkTools.AsCallback(progress));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
 

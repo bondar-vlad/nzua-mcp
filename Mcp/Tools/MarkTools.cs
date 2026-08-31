@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using NzuaMcp.Nzua;
 using NzuaMcp.Nzua.Api;
@@ -10,6 +11,14 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class MarkTools(MarksApi marksApi)
 {
+    internal static Action<int, int> AsCallback(IProgress<ProgressNotificationValue> progress) =>
+        (done, total) => progress.Report(new ProgressNotificationValue
+        {
+            Progress = done,
+            Total = total,
+            Message = $"{done}/{total}",
+        });
+
     [McpServerTool(Name = "nzua_set_marks"), Description(
         "Виставляє оцінки. Для кількох оцінок ЗАВЖДИ ОДИН виклик з entriesJson: масив на 30 оцінок — це один виклик, а не 30. " +
         "В одному масиві можна змішувати різні уроки й різних учнів. " +
@@ -23,6 +32,7 @@ public class MarkTools(MarksApi marksApi)
         "studentId може бути числом або рядком. " +
         "💡 Після масових змін перевірте результат через nzua_get_journal.")]
     public async Task<string> SetMarks(
+        IProgress<ProgressNotificationValue> progress,
         [Description("ID уроку (schedule_id). Якщо всі записи в entriesJson мають власний scheduleId — можна не вказувати.")] string? scheduleId = null,
         [Description("ID учня (для одного учня)")] string? studentId = null,
         [Description("Числова оцінка 1-12 (для одного учня)")] int? grade = null,
@@ -49,7 +59,7 @@ public class MarkTools(MarksApi marksApi)
                     flat.Add(new FlatMarkEntry(sid, e.StudentId, markId, e.Comment));
                 }
 
-                var results = await marksApi.BulkSetMarksFlat(flat);
+                var results = await marksApi.BulkSetMarksFlat(flat, AsCallback(progress));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
 

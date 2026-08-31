@@ -1,13 +1,100 @@
+using System.Diagnostics;
 using Microsoft.Playwright;
 
 namespace NzuaMcp.Nzua;
 
 public static class NzuaAuth
 {
-    private static readonly string BrowserProfileDir = Path.Combine(
+    private static readonly string ProfilesRootDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "nzua-mcp",
-        "playwright-profile");
+        "playwright-profiles");
+
+    // Окремий профіль на процес: кілька MCP-серверів (Claude Desktop + Code + Cowork)
+    // не б'ються за Chromium SingletonLock одного профілю.
+    private static readonly string BrowserProfileDir = Path.Combine(ProfilesRootDir, Environment.ProcessId.ToString());
+
+    /// <summary>Прибирає профілі процесів, яких уже немає. Викликається один раз на старті.</summary>
+    public static void CleanupStaleProfiles()
+    {
+        // Легасі-профіль версій до мульти-інстансу.
+        TryDeleteDirectory(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "nzua-mcp",
+            "playwright-profile"));
+
+        if (!Directory.Exists(ProfilesRootDir))
+            return;
+
+        foreach (var dir in Directory.GetDirectories(ProfilesRootDir))
+        {
+            var name = Path.GetFileName(dir);
+            if (name == Environment.ProcessId.ToString())
+                continue;
+            if (int.TryParse(name, out var pid) && IsProcessRunning(pid))
+                continue;
+            TryDeleteDirectory(dir);
+        }
+    }
+
+    private static bool IsProcessRunning(int pid)
+    {
+        try { return !Process.GetProcessById(pid).HasExited; }
+        catch { return false; }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); }
+        catch { /* профіль може бути зайнятий живим Chromium — пропускаємо */ }
+    }
+
+    // ===== Автовстановлення Chromium =====
+    private static bool _chromiumEnsured;
+
+    /// <summary>
+    /// Ставить Chromium при першому використанні, якщо його немає. Інсталяція йде в дочірньому
+    /// процесі з перенаправленими потоками: stdout цього процесу зайнятий MCP-транспортом.
+    /// </summary>
+    private static async Task EnsureChromiumInstalled(IPlaywright playwright)
+    {
+        if (_chromiumEnsured)
+            return;
+        _chromiumEnsured = true;
+
+        var executablePath = playwright.Chromium.ExecutablePath;
+        if (!string.IsNullOrEmpty(executablePath) && File.Exists(executablePath))
+            return;
+
+        if (Environment.GetEnvironmentVariable("NZUA_AUTO_INSTALL_BROWSER") == "false")
+            throw new NzuaException(
+                "Chromium для Playwright не знайдено, а автовстановлення вимкнено (NZUA_AUTO_INSTALL_BROWSER=false). " +
+                "Встановіть вручну: pwsh playwright.ps1 install chromium");
+
+        Console.Error.WriteLine("[nzua-auth] Chromium не знайдено — встановлюємо (одноразово, кілька хвилин)...");
+        var selfPath = Environment.ProcessPath
+            ?? throw new NzuaException("Не вдалося визначити шлях до процесу для встановлення Chromium.");
+
+        var psi = new ProcessStartInfo(selfPath, "--install-chromium")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        using var installer = Process.Start(psi)
+            ?? throw new NzuaException("Не вдалося запустити процес встановлення Chromium.");
+        installer.OutputDataReceived += (_, e) => { if (e.Data is not null) Console.Error.WriteLine($"[playwright] {e.Data}"); };
+        installer.ErrorDataReceived += (_, e) => { if (e.Data is not null) Console.Error.WriteLine($"[playwright] {e.Data}"); };
+        installer.BeginOutputReadLine();
+        installer.BeginErrorReadLine();
+        await installer.WaitForExitAsync();
+
+        if (installer.ExitCode != 0)
+            throw new NzuaException(
+                $"Встановлення Chromium завершилося з кодом {installer.ExitCode}. " +
+                "Встановіть вручну: pwsh playwright.ps1 install chromium");
+        Console.Error.WriteLine("[nzua-auth] Chromium встановлено.");
+    }
 
     // ===== Багаторазовий кеш браузерного контексту =====
     private static IPlaywright? _cachedPlaywright;
@@ -53,6 +140,7 @@ public static class NzuaAuth
         }
 
         _cachedPlaywright = await Playwright.CreateAsync();
+        await EnsureChromiumInstalled(_cachedPlaywright);
         Directory.CreateDirectory(BrowserProfileDir);
         CleanProfileLock();
         _cachedContext = await _cachedPlaywright.Chromium.LaunchPersistentContextAsync(BrowserProfileDir, new BrowserTypeLaunchPersistentContextOptions
@@ -157,6 +245,7 @@ public static class NzuaAuth
         }
 
         var playwright = await Playwright.CreateAsync();
+        await EnsureChromiumInstalled(playwright);
         var ownsPlaywright = true;
         IBrowserContext? context = null;
         try
@@ -317,7 +406,8 @@ public static class NzuaAuth
     public static async Task<(List<(string Body, int Status)> Responses, NzuaSession Session)> BatchPostWithBrowser(
         NzuaSession currentSession,
         List<(string Path, Dictionary<string, string> FormBody)> requests,
-        bool headless = true)
+        bool headless = true,
+        Action<int, int>? onProgress = null)
     {
         var page = await AcquireBrowser(currentSession, headless);
         try
@@ -359,6 +449,7 @@ public static class NzuaAuth
                 var respBody = parsed.RootElement.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
                 Console.Error.WriteLine($"[nzua-batch] [{i + 1}/{requests.Count}] HTTP {status}");
                 responses.Add((respBody, status));
+                onProgress?.Invoke(i + 1, requests.Count);
             }
 
             var session = await ExtractSessionUpdate(currentSession);
@@ -381,7 +472,8 @@ public static class NzuaAuth
     public static async Task<(List<string> HtmlPages, NzuaSession Session)> BatchFetchWithBrowser(
         NzuaSession currentSession,
         List<string> paths,
-        bool headless = true)
+        bool headless = true,
+        Action<int, int>? onProgress = null)
     {
         var page = await AcquireBrowser(currentSession, headless);
         try
@@ -401,6 +493,7 @@ public static class NzuaAuth
                 });
                 await HandleCloudflareChallenge(page, headless);
                 htmlPages.Add(await page.ContentAsync());
+                onProgress?.Invoke(i + 1, paths.Count);
             }
 
             var session = await ExtractSessionUpdate(currentSession);

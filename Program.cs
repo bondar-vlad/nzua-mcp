@@ -9,8 +9,16 @@ namespace NzuaMcp;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
+        // Ізольований режим встановлення Chromium: запускається як дочірній процес із
+        // перенаправленими потоками, щоб вивід Playwright не потрапив у MCP stdout.
+        if (args is ["--install-chromium"])
+        {
+            Console.SetOut(Console.Error);
+            return Microsoft.Playwright.Program.Main(["install", "chromium"]);
+        }
+
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Logging.AddConsole(options =>
@@ -18,12 +26,16 @@ class Program
             options.LogToStandardErrorThreshold = LogLevel.Trace;
         });
 
+        NzuaAuth.CleanupStaleProfiles();
+
         var sessionStore = new NzuaSessionStore();
 
         // При втраті сесії одразу відкриваємо ручний вхід і повторюємо запит.
-        var client = new NzuaClient(
+        // client захоплюється лямбдою після ініціалізації — на момент виклику вже присвоєний.
+        NzuaClient client = null!;
+        client = new NzuaClient(
             sessionStore.Load(),
-            DoManualAuthenticate,
+            () => DoManualAuthenticate(sessionStore, () => client.Session),
             sessionStore.Save);
 
         // Реєструємо сервіси
@@ -33,6 +45,7 @@ class Program
         builder.Services.AddSingleton<MarksApi>();
         builder.Services.AddSingleton<LessonsApi>();
         builder.Services.AddSingleton<HomeTasksApi>();
+        builder.Services.AddSingleton<Mcp.Tools.JournalTools>();
 
         // MCP сервер
         builder.Services
@@ -40,9 +53,20 @@ class Program
             {
                 var version = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
                 options.ServerInfo = new() { Name = "nzua-mcp", Version = version };
+                options.ServerInstructions =
+                    "Неофіційний MCP-сервер для журналів NZ.UA (кабінет вчителя). Правила роботи: " +
+                    "(1) Починайте з nzua_list_journals, щоб отримати journal_id. " +
+                    "(2) Перед будь-яким записом читайте актуальний стан через nzua_get_journal, після запису — перевіряйте ним же. " +
+                    "(3) Масові зміни робіть ОДНИМ викликом із entriesJson, а не серією одиночних викликів. " +
+                    "(4) ID типів уроків/часу/кабінетів беріть лише з nzua_get_form — не вгадуйте. " +
+                    "(5) Семестрові й річні оцінки не виставляйте автоматично: підготуйте дані, рішення ухвалює вчитель. " +
+                    "(6) ПІБ учнів за замовчуванням замінені стабільними псевдонімами — це навмисне налаштування приватності. " +
+                    "Запис у журнал вимкнено, доки не задано NZUA_ALLOW_WRITES=true.";
             })
             .WithStdioServerTransport()
-            .WithToolsFromAssembly();
+            .WithToolsFromAssembly()
+            .WithPromptsFromAssembly()
+            .WithResourcesFromAssembly();
 
         Console.Error.WriteLine("[nzua-mcp] Запуск MCP сервера...");
         try
@@ -53,12 +77,29 @@ class Program
         {
             await NzuaAuth.CloseBrowser();
         }
+
+        return 0;
     }
 
-    private static async Task<NzuaSession> DoManualAuthenticate()
+    private static async Task<NzuaSession> DoManualAuthenticate(NzuaSessionStore store, Func<NzuaSession?> currentSession)
     {
+        // Single-flight між процесами: якщо інший інстанс уже відкрив вікно входу — чекаємо на нього,
+        // а після звільнення лока спершу пробуємо його свіжу сесію з диска.
+        using var loginLock = await CrossProcessLock.TryAcquireAsync(
+            store.LoginLockFilePath, timeout: TimeSpan.FromMinutes(6), pollInterval: TimeSpan.FromMilliseconds(500));
+        if (loginLock is null)
+            Console.Error.WriteLine("[nzua-mcp] Не дочекалися завершення входу в іншому процесі — відкриваємо власне вікно.");
+
+        var fromDisk = store.Load();
+        if (fromDisk is not null && !Equals(fromDisk, currentSession()))
+        {
+            Console.Error.WriteLine("[nzua-mcp] Інший процес уже оновив сесію — використовуємо її без нового входу.");
+            return fromDisk;
+        }
+
         Console.Error.WriteLine("[nzua-mcp] Сесія недійсна. Відкриваємо браузер для ручного входу...");
         var session = await NzuaAuth.ManualLogin();
+        store.Save(session);
         Console.Error.WriteLine("[nzua-mcp] Ручний вхід завершено. Сесію збережено.");
         return session;
     }

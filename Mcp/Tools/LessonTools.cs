@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using NzuaMcp.Nzua;
 using NzuaMcp.Nzua.Api;
@@ -15,6 +16,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
         "💡 Після додавання перевірте через nzua_get_journal.")]
     public async Task<string> AddLessons(
         [Description("ID журналу")] string journalId,
+        IProgress<ProgressNotificationValue> progress,
         [Description("lesson_type_id з nzua_get_form(kind:\"lesson\")")] int? lessonTypeId = null,
         [Description("Дата уроку (YYYY-MM-DD)")] string? lessonDate = null,
         [Description("ID часу уроку (buzzer_id)")] string? buzzerId = null,
@@ -44,7 +46,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                         e.RepeateType ?? "not", entryForNus, entryNusTypeId);
                 }).ToList();
 
-                var results = await lessonsApi.BatchAddLessons(paramsList);
+                var results = await lessonsApi.BatchAddLessons(paramsList, MarkTools.AsCallback(progress));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
                 var text = $"✅ Додано {ok}/{results.Count} уроків\n";
@@ -80,6 +82,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
         "💡 Після редагування перевірте через nzua_get_journal.")]
     public async Task<string> EditLessons(
         [Description("ID журналу")] string journalId,
+        IProgress<ProgressNotificationValue> progress,
         [Description("ID уроку (для одного)")] string? scheduleId = null,
         [Description("Тип уроку або НУШ ГР-індекс")] int? lessonTypeId = null,
         [Description("Дата уроку (YYYY-MM-DD) — вкажіть, щоб перенести урок на іншу дату")] string? lessonDate = null,
@@ -125,7 +128,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                     paramsList.Add(new EditLessonParams(entry.ScheduleId, journalId, typeId, date, buzzer, room, ForNus: forNus, NusLessonTypeId: nusTypeId));
                 }
 
-                var results = await lessonsApi.BatchEditLessons(paramsList);
+                var results = await lessonsApi.BatchEditLessons(paramsList, MarkTools.AsCallback(progress));
                 var ok = results.Count(r => r.Success);
                 var batchFail = results.Where(r => !r.Success).Select(r => $"{r.Id}: {r.Error}").Concat(errors).ToList();
 
@@ -168,7 +171,8 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
         "Видаляє уроки з журналу. Кілька уроків — ОДИН виклик, scheduleIds через кому. " +
         "⚠️ Урок з оцінками не видаляється — спершу зніміть оцінки через nzua_set_marks.")]
     public async Task<string> DeleteLessons(
-        [Description("ID уроків — один або через кому: '12345' або '12345,12346,12347'")] string scheduleIds)
+        [Description("ID уроків — один або через кому: '12345' або '12345,12346,12347'")] string scheduleIds,
+        IProgress<ProgressNotificationValue> progress)
     {
         try
         {
@@ -181,7 +185,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                 return $"✅ Урок {ids[0]} видалено";
             }
 
-            var results = await lessonsApi.BatchDeleteLessons(ids);
+            var results = await lessonsApi.BatchDeleteLessons(ids, MarkTools.AsCallback(progress));
             var ok = results.Count(r => r.Success);
             var fail = results.Where(r => !r.Success).ToList();
             var text = $"✅ Видалено {ok}/{results.Count} уроків\n";
