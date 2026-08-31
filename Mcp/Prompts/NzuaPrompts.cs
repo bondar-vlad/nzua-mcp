@@ -61,7 +61,7 @@ public static class NzuaPrompts
         "4. Після будь-якого запису перевір результат повторним nzua_get_journal.\n" +
         "5. Учні в даних позначені стабільними псевдонімами — використовуй їх, не намагайся відновити реальні імена.";
 
-    [McpServerPrompt(Name = "journal_audit"), Description(
+    [McpServerPrompt(Name = "journal_audit", Title = "Аудит повноти журналу"), Description(
         "Аудит повноти журналу: уроки без тем/номерів КТП/ДЗ, пропуски дат, учні без оцінок. Готує план виправлень.")]
     public static string JournalAudit(
         [Description(JournalIdDescription)] string? journalId = null,
@@ -86,7 +86,7 @@ public static class NzuaPrompts
         return sb.ToString();
     }
 
-    [McpServerPrompt(Name = "semester_prep"), Description(
+    [McpServerPrompt(Name = "semester_prep", Title = "Підготовка семестрових оцінок"), Description(
         "Підготовка до виставлення семестрових: зведення тематичних/поточних оцінок по кожному учню + чернетка для рішення вчителя.")]
     public static string SemesterPrep(
         [Description(JournalIdDescription)] string? journalId = null,
@@ -111,7 +111,7 @@ public static class NzuaPrompts
         return sb.ToString();
     }
 
-    [McpServerPrompt(Name = "marks_compliance"), Description(
+    [McpServerPrompt(Name = "marks_compliance", Title = "Перевірка відповідності оцінок"), Description(
         "Перевірка оцінок на відповідність системі оцінювання: шкала, доречність спецпозначок, вересневі діагностики.")]
     public static string MarksCompliance(
         [Description(JournalIdDescription)] string? journalId = null,
@@ -143,7 +143,7 @@ public static class NzuaPrompts
         return sb.ToString();
     }
 
-    [McpServerPrompt(Name = "attendance_review"), Description(
+    [McpServerPrompt(Name = "attendance_review", Title = "Аналіз відвідуваності"), Description(
         "Аналіз відвідуваності: патерни Н/хв по учнях, датах і днях тижня, таблиця для класного керівника.")]
     public static string AttendanceReview(
         [Description(JournalIdDescription)] string? journalId = null,
@@ -164,7 +164,7 @@ public static class NzuaPrompts
         return sb.ToString();
     }
 
-    [McpServerPrompt(Name = "lesson_plan_hygiene"), Description(
+    [McpServerPrompt(Name = "lesson_plan_hygiene", Title = "Перевірка календарного плану"), Description(
         "Гігієна календарного плану: послідовність номерів уроків у КТП, дублікати, дірки в розкладі.")]
     public static string LessonPlanHygiene(
         [Description(JournalIdDescription)] string? journalId = null,

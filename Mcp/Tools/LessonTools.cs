@@ -9,7 +9,7 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
 {
-    [McpServerTool(Name = "nzua_add_lessons"), Description(
+    [McpServerTool(Name = "nzua_add_lessons", Title = "Додавання уроків", Destructive = false, Idempotent = false, OpenWorld = false), Description(
         "Додає уроки (колонки) в журнал. Кілька уроків — ОДИН виклик з entriesJson, а не кілька викликів поспіль. " +
         "lessonTypeId, buzzerId і roomId беріть із nzua_get_form(kind:\"lesson\"), не вгадуйте їх. " +
         "Для НУШ передайте forNus=true і nusLessonTypeId лише з nzua_get_form(kind:\"lesson\", forNus:true). " +
@@ -46,7 +46,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                         e.RepeateType ?? "not", entryForNus, entryNusTypeId);
                 }).ToList();
 
-                var results = await lessonsApi.BatchAddLessons(paramsList, MarkTools.AsCallback(progress));
+                var results = await lessonsApi.BatchAddLessons(paramsList, MarkTools.AsCallback(progress, "Додавання уроків"));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
                 var text = $"✅ Додано {ok}/{results.Count} уроків\n";
@@ -75,7 +75,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
         }
     }
 
-    [McpServerTool(Name = "nzua_edit_lessons"), Description(
+    [McpServerTool(Name = "nzua_edit_lessons", Title = "Редагування уроків", Destructive = true, Idempotent = true, OpenWorld = false), Description(
         "Редагує уроки: тип, дата, час, кабінет. Перенесення уроку на іншу дату робиться теж тут — просто вкажіть lessonDate. " +
         "Кілька уроків — ОДИН виклик з entriesJson, а не кілька викликів поспіль. " +
         "Незазначені поля автоматично беруться з поточної форми уроку, тож перезатирання не буде. " +
@@ -128,7 +128,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                     paramsList.Add(new EditLessonParams(entry.ScheduleId, journalId, typeId, date, buzzer, room, ForNus: forNus, NusLessonTypeId: nusTypeId));
                 }
 
-                var results = await lessonsApi.BatchEditLessons(paramsList, MarkTools.AsCallback(progress));
+                var results = await lessonsApi.BatchEditLessons(paramsList, MarkTools.AsCallback(progress, "Редагування уроків"));
                 var ok = results.Count(r => r.Success);
                 var batchFail = results.Where(r => !r.Success).Select(r => $"{r.Id}: {r.Error}").Concat(errors).ToList();
 
@@ -167,7 +167,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
         }
     }
 
-    [McpServerTool(Name = "nzua_delete_lessons"), Description(
+    [McpServerTool(Name = "nzua_delete_lessons", Title = "Видалення уроків", Destructive = true, Idempotent = false, OpenWorld = false), Description(
         "Видаляє уроки з журналу. Кілька уроків — ОДИН виклик, scheduleIds через кому. " +
         "⚠️ Урок з оцінками не видаляється — спершу зніміть оцінки через nzua_set_marks.")]
     public async Task<string> DeleteLessons(
@@ -185,7 +185,7 @@ public class LessonTools(LessonsApi lessonsApi, JournalApi journalApi)
                 return $"✅ Урок {ids[0]} видалено";
             }
 
-            var results = await lessonsApi.BatchDeleteLessons(ids, MarkTools.AsCallback(progress));
+            var results = await lessonsApi.BatchDeleteLessons(ids, MarkTools.AsCallback(progress, "Видалення уроків"));
             var ok = results.Count(r => r.Success);
             var fail = results.Where(r => !r.Success).ToList();
             var text = $"✅ Видалено {ok}/{results.Count} уроків\n";

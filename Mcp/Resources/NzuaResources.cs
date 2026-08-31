@@ -20,7 +20,7 @@ public class NzuaResources(Tools.JournalTools journalTools, NzuaClient client)
 
     private static readonly IProgress<ProgressNotificationValue> NullProgress = new Progress<ProgressNotificationValue>();
 
-    [McpServerResource(UriTemplate = "nzua://journals", Name = "journals", MimeType = "text/markdown"),
+    [McpServerResource(UriTemplate = "nzua://journals", Name = "journals", Title = "Мої журнали", MimeType = "text/markdown"),
      Description("Список журналів вчителя: предмети, класи, journal_id, семестри.")]
     public async Task<string> Journals()
     {
@@ -29,7 +29,7 @@ public class NzuaResources(Tools.JournalTools journalTools, NzuaClient client)
         return await journalTools.ListJournals();
     }
 
-    [McpServerResource(UriTemplate = "nzua://journal/{journalId}", Name = "journal", MimeType = "text/markdown"),
+    [McpServerResource(UriTemplate = "nzua://journal/{journalId}", Name = "journal", Title = "Журнал за ID", MimeType = "text/markdown"),
      Description("Повний журнал за journal_id: учні (псевдоніми), уроки, оцінки, теми та ДЗ.")]
     public async Task<string> Journal(string journalId)
     {
@@ -38,7 +38,7 @@ public class NzuaResources(Tools.JournalTools journalTools, NzuaClient client)
         return await journalTools.GetJournal(journalId, NullProgress);
     }
 
-    [McpServerResource(UriTemplate = "nzua://reference/special-marks", Name = "special-marks", MimeType = "text/markdown"),
+    [McpServerResource(UriTemplate = "nzua://reference/special-marks", Name = "special-marks", Title = "Довідник спецпозначок", MimeType = "text/markdown"),
      Description("Довідник спеціальних позначок журналу NZ.UA та їх значень.")]
     public static string SpecialMarksReference()
     {
@@ -69,7 +69,7 @@ public class NzuaResources(Tools.JournalTools journalTools, NzuaClient client)
         return sb.ToString();
     }
 
-    [McpServerResource(UriTemplate = "nzua://reference/otsinyuvannya", Name = "otsinyuvannya", MimeType = "text/markdown"),
+    [McpServerResource(UriTemplate = "nzua://reference/otsinyuvannya", Name = "otsinyuvannya", Title = "Правила оцінювання НУШ 5–9 (наказ № 1427)", MimeType = "text/markdown"),
      Description("Конспект чинних правил оцінювання НУШ 5–9 (наказ МОН № 1427 від 17.08.2026) з посиланнями на офіційні матеріали.")]
     public static string GradingReference()
     {

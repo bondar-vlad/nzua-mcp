@@ -9,7 +9,7 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class HomeTaskTools(HomeTasksApi homeTasksApi)
 {
-    [McpServerTool(Name = "nzua_set_homework"), Description(
+    [McpServerTool(Name = "nzua_set_homework", Title = "Теми та домашні завдання", Destructive = true, Idempotent = true, OpenWorld = false), Description(
         "Задає тему уроку, номер у календарному плані, домашнє завдання та заміну вчителя/предмета. " +
         "Кілька уроків — ОДИН виклик з entriesJson [{scheduleId, topic?, lessonNumber?, homework?, homeworkTo?, secondPersonalId?, secondPredmetId?}], " +
         "а не кілька викликів поспіль. " +
@@ -36,7 +36,7 @@ public class HomeTaskTools(HomeTasksApi homeTasksApi)
                     new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? throw new NzuaException("Невірний формат entriesJson");
 
-                var results = await homeTasksApi.BatchSetHomework(journalId, entries, MarkTools.AsCallback(progress));
+                var results = await homeTasksApi.BatchSetHomework(journalId, entries, MarkTools.AsCallback(progress, "Оновлення уроків"));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
 

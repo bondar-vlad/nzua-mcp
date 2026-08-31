@@ -11,15 +11,15 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class MarkTools(MarksApi marksApi)
 {
-    internal static Action<int, int> AsCallback(IProgress<ProgressNotificationValue> progress) =>
+    internal static Action<int, int> AsCallback(IProgress<ProgressNotificationValue> progress, string label) =>
         (done, total) => progress.Report(new ProgressNotificationValue
         {
             Progress = done,
             Total = total,
-            Message = $"{done}/{total}",
+            Message = $"{label}: {done}/{total}",
         });
 
-    [McpServerTool(Name = "nzua_set_marks"), Description(
+    [McpServerTool(Name = "nzua_set_marks", Title = "Виставлення оцінок", Destructive = true, Idempotent = true, OpenWorld = false), Description(
         "Виставляє оцінки. Для кількох оцінок ЗАВЖДИ ОДИН виклик з entriesJson: масив на 30 оцінок — це один виклик, а не 30. " +
         "В одному масиві можна змішувати різні уроки й різних учнів. " +
         "Один учень на одному уроці: scheduleId + studentId + grade/specialMark. " +
@@ -59,7 +59,7 @@ public class MarkTools(MarksApi marksApi)
                     flat.Add(new FlatMarkEntry(sid, e.StudentId, markId, e.Comment));
                 }
 
-                var results = await marksApi.BulkSetMarksFlat(flat, AsCallback(progress));
+                var results = await marksApi.BulkSetMarksFlat(flat, AsCallback(progress, "Виставлення оцінок"));
                 var ok = results.Count(r => r.Success);
                 var fail = results.Where(r => !r.Success).ToList();
 

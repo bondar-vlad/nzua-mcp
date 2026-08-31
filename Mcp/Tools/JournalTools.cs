@@ -10,7 +10,7 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionStore sessionStore)
 {
-    [McpServerTool(Name = "nzua_session"), Description(
+    [McpServerTool(Name = "nzua_session", Title = "Сесія NZ.UA (стан/вхід/вихід)", OpenWorld = false), Description(
         "Керує сесією nz.ua. action=status — показує стан сесії без жодного мережевого запиту (чи є активна сесія, " +
         "скільки лишилось до спливання, чи є збережена на диску); викликайте на питання 'чи я залогінений'. " +
         "action=login — відкриває видиме вікно браузера для ручного входу: Cloudflare, кабінет вчителя й вибір школи " +
@@ -75,7 +75,7 @@ public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionS
         return "✅ Сесію завершено, вікно браузера закрито. nzua_session(action:\"login\") відкриє нове вікно з повністю чистим профілем.";
     }
 
-    [McpServerTool(Name = "nzua_list_journals"), Description(
+    [McpServerTool(Name = "nzua_list_journals", Title = "Список журналів", Idempotent = true, OpenWorld = false), Description(
         "Список усіх журналів вчителя — предмети, класи, journal_id, а також класи, предмети й семестри. " +
         "Почніть звідси, щоб дістати journal_id для решти інструментів. " +
         "semesterId перемикає семестр для всієї сесії й одразу повертає оновлений список журналів; " +
@@ -137,7 +137,7 @@ public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionS
         }
     }
 
-    [McpServerTool(Name = "nzua_get_journal"), Description(
+    [McpServerTool(Name = "nzua_get_journal", Title = "Читання журналу", ReadOnly = true, Idempotent = true, OpenWorld = false), Description(
         "Читає журнал: учні, уроки, оцінки, теми та ДЗ — усе за ОДИН виклик, бо все це лежить на одній сторінці nz.ua. " +
         "За замовчуванням тягне всі сторінки пагінації. " +
         "Не викликайте повторно, щоб звузити вибірку: використайте include, scheduleIds або studentIds — " +
@@ -170,7 +170,7 @@ public class JournalTools(JournalApi journalApi, NzuaClient client, NzuaSessionS
             else if (page.HasValue || onlyStudents)
                 data = await journalApi.GetPage(journalId, page ?? 1);
             else
-                data = await journalApi.GetAll(journalId, MarkTools.AsCallback(progress));
+                data = await journalApi.GetAll(journalId, MarkTools.AsCallback(progress, "Сторінки журналу"));
 
             data = JournalFilter.Apply(data, scheduleIds, studentIds);
 

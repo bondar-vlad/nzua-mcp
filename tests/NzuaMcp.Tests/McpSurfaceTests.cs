@@ -146,6 +146,42 @@ public class McpSurfaceTests
     }
 
     [Fact]
+    public void EverySurfaceItemHasHumanReadableTitle()
+    {
+        var methods = typeof(NzuaClient).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            .ToList();
+
+        Assert.All(
+            methods.Select(m => m.GetCustomAttribute<McpServerToolAttribute>()).Where(a => a is not null),
+            tool => Assert.False(string.IsNullOrWhiteSpace(tool!.Title)));
+        Assert.All(
+            methods.Select(m => m.GetCustomAttribute<McpServerPromptAttribute>()).Where(a => a is not null),
+            prompt => Assert.False(string.IsNullOrWhiteSpace(prompt!.Title)));
+        Assert.All(
+            methods.Select(m => m.GetCustomAttribute<McpServerResourceAttribute>()).Where(a => a is not null),
+            resource => Assert.False(string.IsNullOrWhiteSpace(resource!.Title)));
+    }
+
+    [Fact]
+    public void ReadToolsAreAnnotatedReadOnly()
+    {
+        var tools = typeof(NzuaClient).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            .Select(m => m.GetCustomAttribute<McpServerToolAttribute>())
+            .Where(a => a is not null)
+            .ToDictionary(a => a!.Name!, a => a!);
+
+        Assert.True(tools["nzua_get_journal"].ReadOnly);
+        Assert.True(tools["nzua_get_form"].ReadOnly);
+        // Write-інструменти не мають бути read-only.
+        Assert.False(tools["nzua_set_marks"].ReadOnly);
+        Assert.False(tools["nzua_delete_lessons"].ReadOnly);
+    }
+
+    [Fact]
     public void Completions_SuggestJournalIdsFromCacheAndStaticEnums()
     {
         List<JournalListItem> cached =

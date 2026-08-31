@@ -8,7 +8,7 @@ namespace NzuaMcp.Mcp.Tools;
 [McpServerToolType]
 public class FormTools(JournalApi journalApi)
 {
-    [McpServerTool(Name = "nzua_get_form"), Description(
+    [McpServerTool(Name = "nzua_get_form", Title = "Довідники форм (ID для запису)", ReadOnly = true, Idempotent = true, OpenWorld = false), Description(
         "Повертає ID і поточні значення, потрібні ПЕРЕД записом — беріть їх звідси, а не вгадуйте. " +
         "kind=\"lesson\" — час уроку (buzzer_id), кабінети (room_id), типи уроків (lesson_type_id) і поточні значення уроку; " +
         "з forNus=true додатково показує ГР-індекси й nus_lesson_type_id для НУШ. " +
