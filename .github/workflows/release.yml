@@ -66,4 +66,5 @@ jobs:
         with:
           files: nzua-mcp-*.zip
           generate_release_notes: true
-          draft: true
+          # Не draft: при повторному пуші тегу оновлює наявний реліз і замінює однойменні асети.
+          draft: false
