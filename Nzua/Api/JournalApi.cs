@@ -10,10 +10,16 @@ public class JournalApi(NzuaClient client)
     private readonly Dictionary<string, (DateTimeOffset FetchedAt, int Generation, JournalPage Page)> _fullJournalCache = new();
     private readonly object _cacheLock = new();
 
+    // Останній успішний список журналів — для MCP completions без мережевих запитів і попапів логіну.
+    private volatile IReadOnlyList<JournalListItem> _cachedJournals = [];
+    public IReadOnlyList<JournalListItem> CachedJournals => _cachedJournals;
+
     public async Task<JournalListData> GetJournalList()
     {
         var html = await client.Get("/journal/list");
-        return await NzuaParser.ParseJournalList(html);
+        var data = await NzuaParser.ParseJournalList(html);
+        _cachedJournals = data.Journals;
+        return data;
     }
 
     public async Task<JournalListData> ChangeSemester(string semesterId)
@@ -30,7 +36,9 @@ public class JournalApi(NzuaClient client)
 
         // Повертаємо оновлений список журналів
         var updatedHtml = await client.Get("/journal/list");
-        return await NzuaParser.ParseJournalList(updatedHtml);
+        var updated = await NzuaParser.ParseJournalList(updatedHtml);
+        _cachedJournals = updated.Journals;
+        return updated;
     }
 
     public async Task<JournalPage> GetPage(string journalId, int page = 1)

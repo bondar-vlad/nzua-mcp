@@ -17,6 +17,18 @@ public static class NzuaPrompts
         "nus_1_4 (НУШ 1–4, рівнева П/С/Д/В), traditional (10–11(12) класи, 12-бальна), " +
         "custom (власна шкала закладу або зараховано/не зараховано)";
 
+    private const string JournalIdDescription =
+        "ID журналу (є автодоповнення після першого nzua_list_journals). Не знаєте — залиште порожнім: AI спершу покаже список і уточнить вибір.";
+
+    private static string JournalLabel(string? journalId) =>
+        string.IsNullOrWhiteSpace(journalId) ? "(обери на кроці 0)" : journalId;
+
+    private static void AppendResolveStep(StringBuilder sb, string? journalId)
+    {
+        if (string.IsNullOrWhiteSpace(journalId))
+            sb.AppendLine("0. journalId не вказано: виклич nzua_list_journals, покажи список журналів і уточни у вчителя, з яким працювати.");
+    }
+
     private static string GradingRules(string gradingSystem) => gradingSystem switch
     {
         "nus_5_9" =>
@@ -52,13 +64,14 @@ public static class NzuaPrompts
     [McpServerPrompt(Name = "journal_audit"), Description(
         "Аудит повноти журналу: уроки без тем/номерів КТП/ДЗ, пропуски дат, учні без оцінок. Готує план виправлень.")]
     public static string JournalAudit(
-        [Description("ID журналу (з nzua_list_journals)")] string journalId,
+        [Description(JournalIdDescription)] string? journalId = null,
         [Description("Період аналізу, напр. 'вересень', '01.09–30.10' або 'семестр'. Порожньо = весь журнал.")] string? period = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Проведи аудит повноти журналу {journalId} у NZ.UA{(string.IsNullOrWhiteSpace(period) ? "" : $" за період: {period}")}.");
+        sb.AppendLine($"Проведи аудит повноти журналу {JournalLabel(journalId)} у NZ.UA{(string.IsNullOrWhiteSpace(period) ? "" : $" за період: {period}")}.");
         sb.AppendLine();
         sb.AppendLine("Кроки:");
+        AppendResolveStep(sb, journalId);
         sb.AppendLine("1. Заванта́ж журнал повністю: nzua_get_journal(journalId, include: \"students,lessons,marks,homework\").");
         sb.AppendLine("2. Знайди і зведи в таблиці:");
         sb.AppendLine("   - уроки БЕЗ теми (порожнє поле topic);");
@@ -76,16 +89,17 @@ public static class NzuaPrompts
     [McpServerPrompt(Name = "semester_prep"), Description(
         "Підготовка до виставлення семестрових: зведення тематичних/поточних оцінок по кожному учню + чернетка для рішення вчителя.")]
     public static string SemesterPrep(
-        [Description("ID журналу (з nzua_list_journals)")] string journalId,
+        [Description(JournalIdDescription)] string? journalId = null,
         [Description(GradingSystemDescription)] string gradingSystem = "nus_5_9",
         [Description("Семестр: 1 або 2")] int semester = 1)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Підготуй зведення для виставлення оцінок за {semester}-й семестр у журналі {journalId}.");
+        sb.AppendLine($"Підготуй зведення для виставлення оцінок за {semester}-й семестр у журналі {JournalLabel(journalId)}.");
         sb.AppendLine();
         sb.AppendLine(GradingRules(gradingSystem));
         sb.AppendLine();
         sb.AppendLine("Кроки:");
+        AppendResolveStep(sb, journalId);
         sb.AppendLine("1. Заванта́ж журнал: nzua_get_journal(journalId). Тематичні/семестрові колонки можна виділити через lessonTypeId (див. опис інструмента).");
         sb.AppendLine("2. Для КОЖНОГО учня зведи таблицю: кількість поточних оцінок, тематичні оцінки, пропуски (Н/хв), спецпозначки (зв, вивч, Н/О...).");
         sb.AppendLine("3. Познач учнів, для яких даних замало для семестрової (немає тематичних і менш як 2–3 поточні) — їм потрібна увага вчителя в першу чергу.");
@@ -100,16 +114,17 @@ public static class NzuaPrompts
     [McpServerPrompt(Name = "marks_compliance"), Description(
         "Перевірка оцінок на відповідність системі оцінювання: шкала, доречність спецпозначок, вересневі діагностики.")]
     public static string MarksCompliance(
-        [Description("ID журналу (з nzua_list_journals)")] string journalId,
+        [Description(JournalIdDescription)] string? journalId = null,
         [Description(GradingSystemDescription)] string gradingSystem = "nus_5_9",
         [Description("Номер класу (5–12), якщо відомий — для точніших порад")] int? classNumber = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Перевір оцінки журналу {journalId}{(classNumber.HasValue ? $" ({classNumber} клас)" : "")} на відповідність системі оцінювання.");
+        sb.AppendLine($"Перевір оцінки журналу {JournalLabel(journalId)}{(classNumber.HasValue ? $" ({classNumber} клас)" : "")} на відповідність системі оцінювання.");
         sb.AppendLine();
         sb.AppendLine(GradingRules(gradingSystem));
         sb.AppendLine();
         sb.AppendLine("Чек-лист перевірки:");
+        AppendResolveStep(sb, journalId);
         sb.AppendLine("1. Заванта́ж журнал: nzua_get_journal(journalId).");
         if (gradingSystem == "nus_5_9")
         {
@@ -131,13 +146,14 @@ public static class NzuaPrompts
     [McpServerPrompt(Name = "attendance_review"), Description(
         "Аналіз відвідуваності: патерни Н/хв по учнях, датах і днях тижня, таблиця для класного керівника.")]
     public static string AttendanceReview(
-        [Description("ID журналу (з nzua_list_journals)")] string journalId,
+        [Description(JournalIdDescription)] string? journalId = null,
         [Description("Період аналізу, напр. 'вересень' або '01.09–30.10'. Порожньо = весь журнал.")] string? period = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Проаналізуй відвідуваність у журналі {journalId}{(string.IsNullOrWhiteSpace(period) ? "" : $" за період: {period}")}.");
+        sb.AppendLine($"Проаналізуй відвідуваність у журналі {JournalLabel(journalId)}{(string.IsNullOrWhiteSpace(period) ? "" : $" за період: {period}")}.");
         sb.AppendLine();
         sb.AppendLine("Кроки:");
+        AppendResolveStep(sb, journalId);
         sb.AppendLine("1. Заванта́ж журнал: nzua_get_journal(journalId, include: \"students,lessons,marks\").");
         sb.AppendLine("2. Виділи всі позначки відсутності: Н (відсутній), хв (хвороба), Н/А (відсутній з поважної причини).");
         sb.AppendLine("3. Зведи по кожному учню: кількість Н / хв / Н/А, частка пропущених уроків у %.");
@@ -151,13 +167,14 @@ public static class NzuaPrompts
     [McpServerPrompt(Name = "lesson_plan_hygiene"), Description(
         "Гігієна календарного плану: послідовність номерів уроків у КТП, дублікати, дірки в розкладі.")]
     public static string LessonPlanHygiene(
-        [Description("ID журналу (з nzua_list_journals)")] string journalId,
+        [Description(JournalIdDescription)] string? journalId = null,
         [Description("Планова кількість уроків на тиждень за навчальним планом (напр. 2)")] int? hoursPerWeek = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Перевір відповідність журналу {journalId} календарно-тематичному плану.");
+        sb.AppendLine($"Перевір відповідність журналу {JournalLabel(journalId)} календарно-тематичному плану.");
         sb.AppendLine();
         sb.AppendLine("Кроки:");
+        AppendResolveStep(sb, journalId);
         sb.AppendLine("1. Заванта́ж журнал: nzua_get_journal(journalId, include: \"lessons,homework\").");
         sb.AppendLine("2. Перевір номери уроків у КТП (lesson_number_in_plan): послідовність без пропусків, без дублікатів, без порожніх там, де в сусідніх уроках номери є.");
         if (hoursPerWeek.HasValue)

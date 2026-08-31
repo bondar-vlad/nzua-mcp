@@ -38,10 +38,12 @@ class Program
             () => DoManualAuthenticate(sessionStore, () => client.Session),
             sessionStore.Save);
 
+        var journalApi = new JournalApi(client);
+
         // Реєструємо сервіси
         builder.Services.AddSingleton(sessionStore);
         builder.Services.AddSingleton(client);
-        builder.Services.AddSingleton<JournalApi>();
+        builder.Services.AddSingleton(journalApi);
         builder.Services.AddSingleton<MarksApi>();
         builder.Services.AddSingleton<LessonsApi>();
         builder.Services.AddSingleton<HomeTasksApi>();
@@ -66,7 +68,11 @@ class Program
             .WithStdioServerTransport()
             .WithToolsFromAssembly()
             .WithPromptsFromAssembly()
-            .WithResourcesFromAssembly();
+            .WithResourcesFromAssembly()
+            // Автодоповнення аргументів промптів і шаблону ресурсу: journalId береться лише
+            // з кешу останнього nzua_list_journals — без мережі й вікон логіну.
+            .WithCompleteHandler((ctx, _) =>
+                ValueTask.FromResult(Mcp.NzuaCompletions.Resolve(ctx.Params, journalApi.CachedJournals)));
 
         Console.Error.WriteLine("[nzua-mcp] Запуск MCP сервера...");
         try

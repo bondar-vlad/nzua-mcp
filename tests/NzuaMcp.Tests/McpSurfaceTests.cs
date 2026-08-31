@@ -144,4 +144,35 @@ public class McpSurfaceTests
 
         Assert.DoesNotContain(uris, uri => uri!.Contains("student", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void Completions_SuggestJournalIdsFromCacheAndStaticEnums()
+    {
+        List<JournalListItem> cached =
+        [
+            new("14147143", "Алгебра", "10-В"),
+            new("14126039", "математика", "6--"),
+        ];
+
+        var journals = Mcp.NzuaCompletions.Resolve(new ModelContextProtocol.Protocol.CompleteRequestParams
+        {
+            Ref = new ModelContextProtocol.Protocol.PromptReference { Name = "semester_prep" },
+            Argument = new ModelContextProtocol.Protocol.Argument { Name = "journalId", Value = "1414" },
+        }, cached);
+        Assert.Equal(["14147143"], journals.Completion.Values);
+
+        var grading = Mcp.NzuaCompletions.Resolve(new ModelContextProtocol.Protocol.CompleteRequestParams
+        {
+            Ref = new ModelContextProtocol.Protocol.PromptReference { Name = "semester_prep" },
+            Argument = new ModelContextProtocol.Protocol.Argument { Name = "gradingSystem", Value = "nus" },
+        }, cached);
+        Assert.Equal(["nus_5_9", "nus_1_4"], grading.Completion.Values);
+
+        var unknown = Mcp.NzuaCompletions.Resolve(new ModelContextProtocol.Protocol.CompleteRequestParams
+        {
+            Ref = new ModelContextProtocol.Protocol.ResourceTemplateReference { Uri = "nzua://journal/{journalId}" },
+            Argument = new ModelContextProtocol.Protocol.Argument { Name = "journalId", Value = "" },
+        }, []);
+        Assert.Empty(unknown.Completion.Values);
+    }
 }
