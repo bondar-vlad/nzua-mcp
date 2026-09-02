@@ -48,7 +48,7 @@ jobs:
           cd publish/${{ matrix.rid }}
           zip -r ../../nzua-mcp-${{ github.ref_name }}-${{ matrix.rid }}.zip .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nzua-mcp-${{ matrix.rid }}
           path: nzua-mcp-*.zip
