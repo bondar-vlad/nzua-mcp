@@ -37,8 +37,8 @@
       },
       "AngleSharp": {
         "type": "Transitive",
-        "resolved": "1.6.0",
-        "contentHash": "kVnhnZlM4Yww2KWqW3uSL8isvhYsrTTBMSPAgoF8ZhMrLSoay6783AP6dQxAj1J9gvWKi3OIM4ZezdE2Y4ufCQ=="
+        "resolved": "1.7.2",
+        "contentHash": "r1rb5Qo/0KPzmP0nbSiXPDVfh4Ctu0B+y1RyyUq73g4sgAmEW7q10RDyTq2ZsILwtO9O2LAvMrUles7eD4zz1g=="
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
@@ -442,7 +442,7 @@
       "nzua-mcp": {
         "type": "Project",
         "dependencies": {
-          "AngleSharp": "[1.6.0, )",
+          "AngleSharp": "[1.7.2, )",
           "Microsoft.Extensions.Hosting": "[10.0.10, )",
           "Microsoft.Playwright": "[1.61.0, )",
           "ModelContextProtocol": "[2.2.0, )"
